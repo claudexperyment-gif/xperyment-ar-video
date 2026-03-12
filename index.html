@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>XPERYMENT AR — Video</title>
+
+  <!-- A-Frame PRIMERO, luego MindAR -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.3/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    /* Ocultar botón VR/Cardboard */
+    .a-enter-vr-button, .a-enter-ar-button {
+      display: none !important;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    /* Mensaje de estado */
+    #status {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 28, 44, 0.85);
+      color: #1CC7C7;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 14px;
+      z-index: 999;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="status">Apunta la cámara hacia la imagen del libro</div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <!-- Assets: video MP4 -->
+    <a-assets>
+      <video
+        id="vid"
+        src="./video.mp4"
+        preload="auto"
+        loop
+        muted
+        crossorigin="anonymous"
+        playsinline
+        webkit-playsinline
+      ></video>
+    </a-assets>
+
+    <!-- Cámara AR -->
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Target 0: la misma imagen compilada en targets.mind -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <!-- Plano con video — ajustar width/height según proporción del video -->
+      <a-plane
+        id="video-plane"
+        position="0 0 0"
+        width="1"
+        height="0.5625"
+        rotation="0 0 0"
+        material="src: #vid; shader: flat; transparent: true; side: double;"
+      ></a-plane>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const videoEl = document.querySelector('#vid');
+    const statusEl = document.querySelector('#status');
+    const target = document.querySelector('[mindar-image-target]');
+
+    // Cuando detecta la imagen → reproducir video
+    target.addEventListener('targetFound', () => {
+      statusEl.textContent = '▶ Imagen detectada — reproduciendo video';
+      statusEl.style.color = '#1CC7C7';
+      videoEl.play().catch(err => {
+        console.log('Autoplay bloqueado:', err);
+        statusEl.textContent = 'Toca la pantalla para activar el video';
+        statusEl.style.color = '#DD914A';
+        // Fallback: play on user tap
+        document.addEventListener('click', () => {
+          videoEl.play();
+          statusEl.textContent = '▶ Reproduciendo video';
+          statusEl.style.color = '#1CC7C7';
+        }, { once: true });
+      });
+    });
+
+    // Cuando pierde la imagen → pausar video
+    target.addEventListener('targetLost', () => {
+      videoEl.pause();
+      statusEl.textContent = 'Apunta la cámara hacia la imagen del libro';
+      statusEl.style.color = '#1CC7C7';
+    });
+
+    // Ocultar mensaje de estado después de 8 segundos de reproducción
+    videoEl.addEventListener('playing', () => {
+      setTimeout(() => {
+        statusEl.style.opacity = '0';
+        statusEl.style.transition = 'opacity 1s';
+      }, 8000);
+    });
+  </script>
+
+</body>
+</html>
